@@ -5,16 +5,30 @@ import snowy from '../assets/images/snowy.png';
 import { useState } from'react';
 import { useEffect } from 'react';
 import loadingGif from '../assets/images/loading.gif'
+import { createClient } from 'pexels';
 
 
 const WeatherApp = () => {
 
     const [data, setData] = useState({})
     const [location, setLocation] = useState("")
+    const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false)
+    const [cityImage, setCityImage] = useState(null);
+    const [cityList, setCityList] = useState([]);
     const api_key = '8a85afb9c508e181779be90a10d2bc12'
+    const pexelsClient = createClient('gjOiqujyTqmRLSok09mU613oy9zyoQPcu4sUdmXzLhiwbsIkXpL1lK9W'); // remplace par ta vraie clé
 
     useEffect(() => {
+        const loadCityData = async () => {
+            const res = await fetch('../assets/cities.json');
+            const data = await res.json();
+        
+            // Extrait juste les noms de ville
+            const names = data.map(entry => entry.name);
+            setCityList(names);
+          };
+
         const fetchDefaultWeather = async () => {
             setLoading(true)
             const defaultLocation = "Nantes "
@@ -22,15 +36,44 @@ const WeatherApp = () => {
             const res = await fetch(url)
             const defaultData = await res.json()
             setData(defaultData)
+            fetchCityImage(defaultLocation);
             setLoading(false)
         }
-
+    
+        loadCityData();
         fetchDefaultWeather()
     }, [])
+
+    const fetchCityImage = async (cityName) => {
+        const refinedQuery = `${cityName} city landscape monument`; // or "skyline", "aerial view", etc.
+        try {
+            const res = await pexelsClient.photos.search({ query: refinedQuery, per_page: 1 });
+            if (res.photos && res.photos.length > 0) {
+                const img = new Image();
+                img.src = res.photos[0].src.large2x;
+                img.onload = () => {
+                    setCityImage(img.src);
+                };
+            } else {
+                setCityImage(null);
+            }
+        } catch (err) {
+            console.error("Erreur récupération image Pexels :", err);
+            setCityImage(null);
+        }
+    };
     
 
+
     const handleInputChange = (e) => {
-        setLocation(e.target.value)
+        const value = e.target.value;
+        setLocation(value)
+
+        const filtered = cityList.filter(city =>
+            city.toLowerCase().startsWith(value.toLowerCase())
+          ).slice(0, 5); // max 5 suggestions
+        
+          setSuggestions(filtered);
     }
 
     const search = async () => {
@@ -39,10 +82,11 @@ const WeatherApp = () => {
             const res = await fetch(url)
             const searchData = await res.json()
             console.log(searchData)
-            if (searchData.cod !== "200") {
+            if (searchData.cod !== 200) {
                 setData({notFound: true})
             } else {
                 setData(searchData)
+                fetchCityImage(location);
                 setLocation("")
             }
             setLoading(false)           
@@ -89,8 +133,14 @@ const WeatherApp = () => {
     const formattedDate = `${dayOfWeek}, ${dayOfMonth} ${month}`
 
   return (
-    <div className="Container" style={{backgroundImage}}>
-        <div className="weather-app" style={{backgroundImage: backgroundImage && backgroundImage.replace ? backgroundImage.replace("to right", "to top") : null}}>
+    <div className="Container" 
+    style={{
+        backgroundImage: cityImage ? `url(${cityImage})` : backgroundImage,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative',
+    }}>
+        <div className="weather-app" >
             <div className="search">
                 <div className="search-top">
                     <i className="fa-solid fa-location-dot"></i>
@@ -99,6 +149,21 @@ const WeatherApp = () => {
                 <div className="search-bar">
                     <input type="text" placeholder="Enter Location" value={location} onChange={handleInputChange} onKeyDown={handleKeyDown}/>
                     <i className="fa-solid fa-magnifying-glass" onClick={search}></i>
+                </div>
+                <div className="suggestions-list">
+                    {suggestions.map((city, idx) => (
+                        <div
+                        key={idx}
+                        className="suggestion-item"
+                        onClick={() => {
+                            setLocation(city);
+                            setSuggestions([]);
+                            search(city);
+                        }}
+                        >
+                        {city}
+                        </div>
+                    ))}
                 </div>
             </div>
             {loading ? (<img className='loader' src={loadingGif} alt='loading'/>) :  data.notFound ? (<div className='not-found'>Not Found 😒</div>) : <>

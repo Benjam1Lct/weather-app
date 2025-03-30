@@ -6,6 +6,7 @@
     justify-content: center;
     align-items: center; 
     overflow: hidden;
+    transition: background-image 0.4s ease-in-out;
 }
 
 .weather img {
@@ -15,15 +16,19 @@
 .weather-app {
     width: 35rem;
     height: 65rem;
-    background-image: linear-gradient(to top, #f3b07c, #fcd283);
+    background: rgba(255, 255, 255, 0.2); /* semi-transparent blanc */
     border-radius: 3rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 2rem;
-    box-shadow: -3rem 1rem 6rem rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(12px); /* blur derrière */
+    -webkit-backdrop-filter: blur(12px); /* pour Safari */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* fine bordure blanche */
     position: relative;
 }
+
 
 .search {
     display: flex;
@@ -38,7 +43,7 @@
 
 .not-found {
     font-size: 3rem;
-    color: #484569;
+    color: #18181a;
     margin-top: 5rem;
     text-shadow: -0.3rem 0.5rem 1rem rgba(0,0,0,0.2);
 }
@@ -51,12 +56,12 @@
 
 .search-top i {
     font-size: 2rem;
-    color: #2f2e57 ;
+    color: #18181a ;
 }
 
 .search-top div {
     font-size: 1.6rem;
-    color: #484569;
+    color: #18181a;
     letter-spacing: 0.1rem;
 }
 
@@ -68,17 +73,17 @@
     width: 25rem;
     height: 3.5rem;
     background-color: transparent;
-    border: 0.2rem solid #676394;
+    border: 0.2rem solid #18181a;
     border-radius: 3rem;
     outline: none;
     padding: 1rem 3rem 1rem 1rem;
     font-size: 1.6rem;  
-    color: #484569;;
+    color: #18181a;;
 }
 
 .search-bar input::placeholder {
     font-size: 1.4rem;
-    color: #676394;
+    color: #18181a;
     letter-spacing: 0.1rem; 
 }
 
@@ -92,7 +97,7 @@
     transform: translateY(-50%);
     right: 1.5rem;
     font-size: 1.5rem;
-    color: #2f2e57;
+    color: #18181a;
     cursor: pointer;
 }
 
@@ -102,7 +107,7 @@
     left: 50%;
     transform: translateX(-50%);
     font-size: 2rem;
-    color: #484569;
+    color: #18181a;
 }
 
 .temp {
@@ -111,7 +116,7 @@
     left: 50%;
     transform: translateX(-50%);
     font-size: 9rem;
-    background-image: linear-gradient(to right, #2f2e57, #605d80);
+    background-image: linear-gradient(to right, #18181a, #36363b);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-shadow: 0.5rem 0.5rem 1rem rgba(0,0,0,0.2);
@@ -121,7 +126,7 @@
     position: absolute;
     bottom: 22%;
     font-size: 1.6rem;
-    color: #484569;;
+    color: #18181a;;
 }
 
 .weather-data {
@@ -146,7 +151,7 @@
 
 .data-name {
     font-size: 1.6rem;
-    color: #605d80;
+    color: #18181a;
 }
 
 .weather-data i {
@@ -157,6 +162,6 @@
 
 .data {
     font-size: 2rem;
-    color: #2f2e57;
+    color: #18181a;
 }
 
