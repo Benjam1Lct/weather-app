@@ -6,43 +6,125 @@ import { useState } from'react';
 import { useEffect } from 'react';
 import loadingGif from '../assets/images/loading.gif'
 import { createClient } from 'pexels';
+import { AsyncPaginate } from 'react-select-async-paginate';
 
 
 const WeatherApp = () => {
 
     const [data, setData] = useState({})
-    const [location, setLocation] = useState("")
-    const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false)
     const [cityImage, setCityImage] = useState(null);
-    const [cityList, setCityList] = useState([]);
-    const api_key = '8a85afb9c508e181779be90a10d2bc12'
-    const pexelsClient = createClient('gjOiqujyTqmRLSok09mU613oy9zyoQPcu4sUdmXzLhiwbsIkXpL1lK9W'); // remplace par ta vraie clé
+    const [searchValue, setSearchValue] = useState({
+        value: "47.2184 -1.5536", // latitude longitude de Nantes
+        label: "Nantes, FR"
+      });
+          const api_key = '8a85afb9c508e181779be90a10d2bc12'
+    const pexelsClient = createClient('gjOiqujyTqmRLSok09mU613oy9zyoQPcu4sUdmXzLhiwbsIkXpL1lK9W')
+    const GEO_API_OPTIONS = {
+        method: 'GET',
+        headers: {
+          'X-RapidAPI-Key': '4f0dcce84bmshac9e329bd55fd14p17ec6fjsnff18c2e61917',
+          'X-RapidAPI-Host': 'wft-geo-db.p.rapidapi.com',
+        },
+      };
+    const GEO_API_URL = 'https://wft-geo-db.p.rapidapi.com/v1/geo';
+
 
     useEffect(() => {
-        const loadCityData = async () => {
-            const res = await fetch('../assets/cities.json');
-            const data = await res.json();
-        
-            // Extrait juste les noms de ville
-            const names = data.map(entry => entry.name);
-            setCityList(names);
-          };
-
         const fetchDefaultWeather = async () => {
-            setLoading(true)
-            const defaultLocation = "Nantes "
-            const url = `https://api.openweathermap.org/data/2.5/weather?q=${defaultLocation}&units=Metric&appid=${api_key}`
-            const res = await fetch(url)
-            const defaultData = await res.json()
-            setData(defaultData)
-            fetchCityImage(defaultLocation);
-            setLoading(false)
+          setLoading(true);
+          const defaultLat = 47.2184;
+          const defaultLon = -1.5536;
+      
+          const url = `https://api.openweathermap.org/data/2.5/weather?lat=${defaultLat}&lon=${defaultLon}&appid=${api_key}&units=metric`;
+          const res = await fetch(url);
+          const defaultData = await res.json();
+      
+          setData(defaultData);
+          fetchCityImage("Nantes, FR"); // pour l'image
+          setLoading(false);
+        };
+      
+        fetchDefaultWeather();
+      }, []);
+      
+
+    const fetchCities = async (input) => {
+        try {
+          const response = await fetch(
+            `${GEO_API_URL}/cities?minPopulation=10000&namePrefix=${input}`,
+            GEO_API_OPTIONS
+          );
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          console.log(error);
+          return { data: [] };
         }
+      };
+      
+      const loadOptions = async (inputValue) => {
+        const citiesList = await fetchCities(inputValue);
+      
+        const cleaned = citiesList.data.filter(city =>
+          !city.name.toLowerCase().includes("arrondissement")
+        );
+      
+        // Injection manuelle de Paris, FR si l'utilisateur tape "par"
+        const includeParis = inputValue.toLowerCase().startsWith("par");
+        if (includeParis) {
+          const paris = {
+            name: "Paris",
+            countryCode: "FR",
+            latitude: 48.8566,
+            longitude: 2.3522,
+          };
+          cleaned.unshift(paris);
+        }
+      
+        // Supprimer les doublons (même nom + pays)
+        const unique = cleaned.filter((city, index, self) =>
+          index === self.findIndex(c =>
+            c.name === city.name && c.countryCode === city.countryCode
+          )
+        );
+      
+        // Trier les villes FR d'abord
+        const sorted = unique.sort((a, b) => {
+          if (a.countryCode === 'FR' && b.countryCode !== 'FR') return -1;
+          if (a.countryCode !== 'FR' && b.countryCode === 'FR') return 1;
+          return 0;
+        });
+      
+        const sliced = sorted.slice(0, 10);
+      
+        return {
+          options: sliced.map(city => ({
+            value: `${city.latitude} ${city.longitude}`,
+            label: `${city.name}, ${city.countryCode}`,
+          }))
+        };
+      };
+      
     
-        loadCityData();
-        fetchDefaultWeather()
-    }, [])
+    const onSearchChange = async (selectedOption) => {
+        setSearchValue(selectedOption);
+        
+        if (!selectedOption) return;
+        
+        const [lat, lon] = selectedOption.value.split(' ');
+        
+        setLoading(true);
+        const weatherRes = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${api_key}&units=metric`
+        );
+        const weatherData = await weatherRes.json();
+        setData(weatherData);
+        fetchCityImage(selectedOption.label);
+        setLoading(false);
+    };
+      
+      
 
     const fetchCityImage = async (cityName) => {
         const refinedQuery = `${cityName} city landscape monument`; // or "skyline", "aerial view", etc.
@@ -62,42 +144,6 @@ const WeatherApp = () => {
             setCityImage(null);
         }
     };
-    
-
-
-    const handleInputChange = (e) => {
-        const value = e.target.value;
-        setLocation(value)
-
-        const filtered = cityList.filter(city =>
-            city.toLowerCase().startsWith(value.toLowerCase())
-          ).slice(0, 5); // max 5 suggestions
-        
-          setSuggestions(filtered);
-    }
-
-    const search = async () => {
-        if (location.trim() !== "") {
-            const url = `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=Metric&appid=${api_key}`
-            const res = await fetch(url)
-            const searchData = await res.json()
-            console.log(searchData)
-            if (searchData.cod !== 200) {
-                setData({notFound: true})
-            } else {
-                setData(searchData)
-                fetchCityImage(location);
-                setLocation("")
-            }
-            setLoading(false)           
-        }
-    }
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            search()
-        }
-    }
 
     const weatherImages = {
         Clear: sunny,
@@ -141,30 +187,35 @@ const WeatherApp = () => {
         position: 'relative',
     }}>
         <div className="weather-app" >
-            <div className="search">
-                <div className="search-top">
-                    <i className="fa-solid fa-location-dot"></i>
-                    <div className="location">{data.name}</div>
-                </div>
-                <div className="search-bar">
-                    <input type="text" placeholder="Enter Location" value={location} onChange={handleInputChange} onKeyDown={handleKeyDown}/>
-                    <i className="fa-solid fa-magnifying-glass" onClick={search}></i>
-                </div>
-                <div className="suggestions-list">
-                    {suggestions.map((city, idx) => (
-                        <div
-                        key={idx}
-                        className="suggestion-item"
-                        onClick={() => {
-                            setLocation(city);
-                            setSuggestions([]);
-                            search(city);
-                        }}
-                        >
-                        {city}
-                        </div>
-                    ))}
-                </div>
+        <div className="search" style={{width: '100%'}}>
+            <AsyncPaginate
+                placeholder="Search for cities"
+                debounceTimeout={500}
+                value={searchValue}
+                onChange={onSearchChange}
+                loadOptions={loadOptions}
+                styles={{
+                control: (base) => ({
+                    ...base,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(8px)',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    padding: '5px',
+                    color: '#18181a',
+                    width: '100%',
+                    fontSize: '1.5rem'
+                }),
+                input: (base) => ({ ...base, color: '#18181a' }),
+                placeholder: (base) => ({ ...base, color: '#18181a' }),
+                singleValue: (base) => ({ ...base, color: '#18181a' }),
+                menu: (base) => ({
+                    ...base,
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    backdropFilter: 'blur(6px)',
+                }),
+                }}
+            />
             </div>
             {loading ? (<img className='loader' src={loadingGif} alt='loading'/>) :  data.notFound ? (<div className='not-found'>Not Found 😒</div>) : <>
                 <div className="weather">
@@ -183,7 +234,7 @@ const WeatherApp = () => {
                     </div>
 
                     <div className="wind">
-                        <div className="data-name">Humidity</div>
+                        <div className="data-name">Wind</div>
                         <i className="fa-solid fa-wind"></i>
                         <div className="data">{data.wind ? `${Math.floor(data.wind.speed)}`: null} km/h</div>
                     </div>

@@ -6,7 +6,7 @@
     justify-content: center;
     align-items: center; 
     overflow: hidden;
-    transition: background-image 0.4s ease-in-out;
+    
 }
 
 .weather img {
