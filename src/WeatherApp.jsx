@@ -3,6 +3,7 @@ import sunny from './assets/images/sunny.png';
 import cloudy from './assets/images/cloudy.png';
 import rainy from './assets/images/rainy.png';
 import snowy from './assets/images/snowy.png';
+import moon from './assets/images/moon.png';
 import loadingGif from './assets/images/loading.gif';
 
 import cold from './assets/images/backgrounds/cold.png';
@@ -18,6 +19,9 @@ import yellow from './assets/images/backgrounds/yellow.png';
 import { loadOptions } from './utils/geoApi';
 import { fetchWeather } from './utils/weatherApi';
 
+import { fetchForecast } from './utils/fetchForecast';
+import ForecastTimeline from './components/ForecastTimeline';
+
 import SearchBar from './components/SearchBar';
 import WeatherDisplay from './components/WeatherDisplay';
 import WeatherDetails from './components/WeatherDetails';
@@ -25,9 +29,11 @@ import Loader from './components/Loader';
 import MapTile from './components/MapTile';
 
 const WeatherApp = () => {
+  const [isBlurAnimating, setIsBlurAnimating] = useState(false);
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(false);
   const [cityImage, setCityImage] = useState(null);
+  const [forecast, setForecast] = useState([]);
   const [searchValue, setSearchValue] = useState({
     value: "47.2184 -1.5536",
     label: "Nantes, FR",
@@ -43,18 +49,6 @@ const WeatherApp = () => {
     Mist: cloudy,
   };
 
-  const backgroundImages = {
-    Clear: 'linear-gradient(to right, #f3b07c, #fcd283)',
-    Clouds: 'linear-gradient(to right, #57d6d4, #71eeec)',
-    Rain: 'linear-gradient(to right, #5bc8fb, #80eaff)',
-    Snow: 'linear-gradient(to right, #aff2ff, #fff2ff)',
-    Haze: 'linear-gradient(to right, #57d6d4, #71eeec)',
-    Mist: 'linear-gradient(to right, #57d6d4, #71eeec)',
-  };
-
-  const weatherImage = data.weather ? weatherImages[data.weather[0].main] : null;
-  const backgroundImage = data.weather ? backgroundImages[data.weather[0].main] : backgroundImages.Clear;
-
   useEffect(() => {
     const fetchDefaultWeather = async () => {
       setLoading(true);
@@ -67,11 +61,36 @@ const WeatherApp = () => {
         city: defaultData.name,
       });
       setData(defaultData);
-      setCityImage(getBackgroundForWeather(defaultData)); // ou weatherData
+      const forecastData = await fetchForecast(defaultLat, defaultLon);
+      setForecast(forecastData);
+      triggerBlurTransition(getBackgroundForWeather(defaultData));
+
+      
       setLoading(false);
     };
     fetchDefaultWeather();
   }, []);
+
+
+  const getLocalHour = (weatherData) => {
+    const utcSeconds = weatherData.dt;
+    const timezoneOffset = weatherData.timezone; // en secondes
+  
+    const localTime = new Date((utcSeconds + timezoneOffset) * 1000);
+    return localTime.getHours();
+  };
+  
+  let weatherImage = null;
+  if (data.weather) {
+    const weatherMain = data.weather[0].main;
+    const hour = getLocalHour(data);
+
+    if (weatherMain === "Clear" && (hour >= 22 || hour < 4)) {
+      weatherImage = moon;
+    } else {
+      weatherImage = weatherImages[weatherMain];
+    }
+  }
 
   const onSearchChange = async (selectedOption) => {
     setSearchValue(selectedOption);
@@ -85,9 +104,11 @@ const WeatherApp = () => {
       lon: weatherData.coord.lon,
       city: weatherData.name,
     });
-    
     setData(weatherData);
-    setCityImage(getBackgroundForWeather(weatherData)); // ou weatherData
+    const forecastData = await fetchForecast(lat, lon);
+    setForecast(forecastData);
+    triggerBlurTransition(getBackgroundForWeather(weatherData));
+
     setLoading(false);
   };
 
@@ -96,27 +117,53 @@ const WeatherApp = () => {
   
     const temp = weatherData.main.temp;
     const weather = weatherData.weather[0].main;
-    const hour = new Date().getHours();
+    const hour = getLocalHour(weatherData);
+    console.log(hour);
   
+    // ⏰ Priorité : ambiance selon l'heure
+    if (hour >= 22 && hour <= 4) return night;
+    if (hour > 18 && hour < 22) return evening;
+    if (hour > 11 && hour <= 18) return green;
+    if (hour > 8 && hour <= 11) return  morning;
+    if (hour >4 && hour <= 8) return sunrise;
+  
+    // ☀️ Ambiance météo/température
     if (temp < 5) return cold;
-    if (temp > 25) return summer;
-    if (hour >= 21 || (weather === "Clear" && hour >= 20)) return night;
-    if (hour >= 18) return evening;
-    if (hour < 10) return morning;
-    if (hour >= 6 && hour <= 8) return sunrise;
+    if (temp > 25 && weather === "Clear") return summer;
     if (weather === "Clear") return yellow;
   
-    return green; // valeur par défaut
+    // 🌫️ Par défaut
+    return green;
   };
 
+  const triggerBlurTransition = (newImage) => {
+    setIsBlurAnimating(true);
+  
+    // ⏳ attendre le milieu de l'animation pour changer l’image
+    setTimeout(() => {
+      setCityImage(newImage);
+    }, 300); // moitié de l’animation
+  
+    // 🔁 fin de l’animation
+    setTimeout(() => {
+      setIsBlurAnimating(false);
+    }, 700); // durée totale
+  };
+  
+  
+
   return (
-    <div className="Container"
-      style={{
-        backgroundImage: cityImage ? `url(${cityImage})` : backgroundImage,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        position: 'relative',
-      }}>
+    <div className="Container">
+        
+
+        {/* BACKGROUND flouté */}
+      <div className="background-wrapper">
+        <img
+          src={cityImage}
+          alt="background"
+          className={`background-blur ${isBlurAnimating ? 'blur-animating' : ''}`}
+          />
+      </div>
 
       <div className="bento">
         <div className="weather-app">
@@ -134,8 +181,10 @@ const WeatherApp = () => {
             </>
           )}
         </div>
-        <MapTile lat={coords.lat} lon={coords.lon} city={coords.city} />
-
+        <div className='rightBox'>
+          <MapTile lat={coords.lat} lon={coords.lon} city={coords.city} />
+          <ForecastTimeline forecast={forecast} />
+        </div>
       </div>
 
       
