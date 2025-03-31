@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "leaflet": "^1.9.4",
     "pexels": "^1.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "react-select-async-paginate": "^0.7.9"
   },
   "devDependencies": {
