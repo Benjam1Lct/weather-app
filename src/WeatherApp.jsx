@@ -118,7 +118,7 @@ const WeatherApp = () => {
         position: 'relative',
       }}>
 
-      <div className="">
+      <div className="bento">
         <div className="weather-app">
           <div className="search" style={{ width: '100%' }}>
             <SearchBar value={searchValue} onChange={onSearchChange} loadOptions={loadOptions} />
