@@ -64,8 +64,6 @@ const WeatherApp = () => {
       const forecastData = await fetchForecast(defaultLat, defaultLon);
       setForecast(forecastData);
       triggerBlurTransition(getBackgroundForWeather(defaultData));
-
-      
       setLoading(false);
     };
     fetchDefaultWeather();
@@ -73,12 +71,14 @@ const WeatherApp = () => {
 
 
   const getLocalHour = (weatherData) => {
-    const utcSeconds = weatherData.dt;
-    const timezoneOffset = weatherData.timezone; // en secondes
+    if (!weatherData?.dt || !weatherData?.timezone) return new Date().getUTCHours();
   
-    const localTime = new Date((utcSeconds + timezoneOffset) * 1000);
-    return localTime.getHours();
+    const utc = weatherData.dt + weatherData.timezone; // timestamp en secondes
+    const localDate = new Date(utc * 1000);
+  
+    return localDate.getUTCHours(); // ← on utilise getUTCHours car on a déjà appliqué le fuseau
   };
+  
   
   let weatherImage = null;
   if (data.weather) {
@@ -114,23 +114,18 @@ const WeatherApp = () => {
 
   const getBackgroundForWeather = (weatherData) => {
     if (!weatherData || !weatherData.main || !weatherData.weather) return green;
-  
-    const temp = weatherData.main.temp;
-    const weather = weatherData.weather[0].main;
     const hour = getLocalHour(weatherData);
     console.log(hour);
   
     // ⏰ Priorité : ambiance selon l'heure
-    if (hour >= 22 && hour <= 4) return night;
-    if (hour > 18 && hour < 22) return evening;
-    if (hour > 11 && hour <= 18) return green;
-    if (hour > 8 && hour <= 11) return  morning;
-    if (hour >4 && hour <= 8) return sunrise;
-  
-    // ☀️ Ambiance météo/température
-    if (temp < 5) return cold;
-    if (temp > 25 && weather === "Clear") return summer;
-    if (weather === "Clear") return yellow;
+    if (hour >= 0 && hour <= 4) return night;
+    if (hour >= 5 && hour <= 7) return sunrise;
+    if (hour >= 8 && hour <= 10) return morning;
+    if (hour >= 11 && hour <= 13) return yellow;
+    if (hour >= 14 && hour <= 17) return summer;
+    if (hour >= 18 && hour <= 19) return green;
+    if (hour >= 20 && hour <= 21) return cold;
+    if (hour >= 22 && hour <= 23) return evening;
   
     // 🌫️ Par défaut
     return green;
