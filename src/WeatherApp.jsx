@@ -27,6 +27,9 @@ import WeatherDisplay from './components/WeatherDisplay';
 import WeatherDetails from './components/WeatherDetails';
 import Loader from './components/Loader';
 import MapTile from './components/MapTile';
+import TemperatureTile from './components/TemperatureTile';
+import PressureTile from './components/PressureTile';
+import WindTile from './components/WindTile';
 
 const WeatherApp = () => {
   const [isBlurAnimating, setIsBlurAnimating] = useState(false);
@@ -34,6 +37,9 @@ const WeatherApp = () => {
   const [loading, setLoading] = useState(false);
   const [cityImage, setCityImage] = useState(null);
   const [forecast, setForecast] = useState([]);
+  const [todayForecasts , setTodayForecasts ] = useState([]);
+  const [tempMax, setTempMax ] = useState(null);
+  const [tempMin, setTempMin ] = useState(null);
   const [searchValue, setSearchValue] = useState({
     value: "47.2184 -1.5536",
     label: "Nantes, FR",
@@ -69,6 +75,27 @@ const WeatherApp = () => {
     fetchDefaultWeather();
   }, []);
 
+  useEffect(() => {
+    if (forecast.length === 0) return;
+  
+    const today = new Date().getDate();
+  
+    const filtered = forecast.filter(item => {
+      const date = new Date(item.dt * 1000);
+      return date.getDate() === today;
+    });
+  
+    setTodayForecasts(filtered);
+  
+    if (filtered.length > 0) {
+      const max = Math.max(...filtered.map(f => f.main.temp_max));
+      const min = Math.min(...filtered.map(f => f.main.temp_min));
+  
+      setTempMax(max);
+      setTempMin(min);
+    }
+  }, [forecast]);
+  
 
   const getLocalHour = (weatherData) => {
     if (!weatherData?.dt || !weatherData?.timezone) return new Date().getUTCHours();
@@ -77,8 +104,7 @@ const WeatherApp = () => {
     const localDate = new Date(utc * 1000);
   
     return localDate.getUTCHours(); // ← on utilise getUTCHours car on a déjà appliqué le fuseau
-  };
-  
+  };  
   
   let weatherImage = null;
   if (data.weather) {
@@ -144,11 +170,9 @@ const WeatherApp = () => {
       setIsBlurAnimating(false);
     }, 700); // durée totale
   };
-  
-  
 
   return (
-    <div className="Container">
+    <div className="bento-container">
         
 
         {/* BACKGROUND flouté */}
@@ -176,14 +200,39 @@ const WeatherApp = () => {
             </>
           )}
         </div>
-        <div className='rightBox'>
-          <MapTile lat={coords.lat} lon={coords.lon} city={coords.city} />
-          <ForecastTimeline forecast={forecast} />
+          <div className="start">
+            <MapTile lat={coords.lat} lon={coords.lon} city={coords.city} />
+            <ForecastTimeline forecast={forecast} />
+          </div>
+          <div className="end">
+            {data.main && tempMax !== null && tempMin !== null && (
+              <TemperatureTile
+                temp_max={tempMax}
+                temp_min={tempMin}
+                feels_like={data.main.feels_like}
+              />
+            )}
+
+            {data.main && (
+              <WindTile
+                speed={data.wind.speed}
+                gust={data.wind.gust}
+                deg={data.wind.deg}
+              />
+            )}
+
+            {data.main && (
+              <PressureTile
+                pressure={data.main.pressure}
+                sea_level={data.main.sea_level}
+                grnd_level={data.main.grnd_level}
+              />
+            )}
+          </div>
+          
         </div>
       </div>
 
-      
-    </div>
   );
 };
 
